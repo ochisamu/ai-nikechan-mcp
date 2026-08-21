@@ -1,0 +1,6 @@
+# X-post source material and generated indexes must never be uploaded as part
+# of a source deployment. Provide an index through approved private storage
+# before enabling semantic search in production.
+x-public-memory-merged/
+src/data/metadata.json
+src/data/embeddings.f32

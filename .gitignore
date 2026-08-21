@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+
+# Private X-post source material and the generated search index contain post text.
+x-public-memory-merged/
+src/data/*
+!src/data/.gitkeep
+
+# TypeScript build cache
+*.tsbuildinfo

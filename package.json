@@ -1,0 +1,26 @@
+{
+  "name": "x-posts-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "tsc --noEmit",
+    "build:index": "tsx scripts/build-index.ts",
+    "test": "tsx --test tests/search.test.ts"
+  },
+  "dependencies": {
+    "mcp-handler": "^1.0.0",
+    "next": "^15.0.0",
+    "openai": "^4.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "dotenv": "^16.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
