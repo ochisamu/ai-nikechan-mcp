@@ -1,10 +1,12 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
 import { embedQuery } from "@/src/lib/openai";
+import { searchResultsAppHtml, searchResultsAppUri } from "@/src/lib/search-results-app";
 import { datasetInfo, getPopularPosts, postById, searchHybrid, searchKeywords, searchPosts, searchTimeline, threadByPostId } from "@/src/lib/vector-store";
 
 const handler = createMcpHandler(
   (server) => {
+    server.registerResource("nikechan-search-results", searchResultsAppUri, { mimeType: "text/html;profile=mcp-app", _meta: { "openai/widgetDescription": "AIニケちゃん検索結果をカードで表示します。", "openai/widgetPrefersBorder": true } }, async () => ({ contents: [{ uri: searchResultsAppUri, mimeType: "text/html;profile=mcp-app", text: searchResultsAppHtml }] }));
     server.tool("get_popular_posts", "反応数でバズったX投稿を探す。意味検索ではなく人気順が必要なときに使い、期間・投稿区分・指標は必要な場合だけ指定する。", { limit: z.number().int().min(1).max(50).default(20), collection: z.enum(["official", "community"]).optional(), from: z.string().datetime().optional(), to: z.string().datetime().optional(), metric: z.enum(["engagement", "likes", "reposts", "replies", "impressions"]).default("engagement") }, async (args) => ({ content: [{ type: "text", text: JSON.stringify(await getPopularPosts(args), null, 2) }] }));
     server.tool("search_timeline", "年・月・期間でAIニケちゃんの記録を絞り、新しい順に返します。", { year: z.number().int().min(2000).max(2100).optional(), month: z.number().int().min(1).max(12).optional(), from: z.string().datetime().optional(), to: z.string().datetime().optional(), limit: z.number().int().min(1).max(50).default(20), source: z.enum(["x", "website"]).optional() }, async (args) => ({ content: [{ type: "text", text: JSON.stringify(await searchTimeline(args), null, 2) }] }));
     const searchInput = {
@@ -18,10 +20,10 @@ const handler = createMcpHandler(
     server.tool("search_keywords", "固有名詞、ハッシュタグ、製品名を完全一致・部分一致で検索します。", searchInput, async ({ query, limit, collection, source }) => ({ content: [{ type: "text", text: JSON.stringify(await searchKeywords({ query, limit, collection, source }), null, 2) }] }));
     server.tool("search_hybrid", "通常はこちらを優先する。固有名詞・ハッシュタグの一致と、言い換えを含む意味の近さを組み合わせて検索する。返却されたURLと情報源を回答の根拠にする。", searchInput, async ({ query, limit, collection, source }) => { const embedding = await embedQuery(query); return { content: [{ type: "text", text: JSON.stringify(await searchHybrid({ query, embedding, limit, collection, source }), null, 2) }] }; });
 
-    server.tool("search_nikechan_knowledge", "AIニケちゃんのX投稿と公式サイトを横断して意味検索します。回答の根拠には返された情報源とURLを使ってください。", searchInput, async ({ query, limit, collection, source, from, to }) => {
+    server.registerTool("search_nikechan_knowledge", { title: "AIニケちゃん知識検索", description: "AIニケちゃんのX投稿と公式サイトを横断して意味検索します。回答の根拠には返された情報源とURLを使ってください。", inputSchema: searchInput, _meta: { "openai/outputTemplate": searchResultsAppUri, "openai/toolInvocation/invoking": "AIニケちゃんの情報を検索中です…", "openai/toolInvocation/invoked": "検索結果を表示しました。", "ui/resourceUri": searchResultsAppUri } }, async ({ query, limit, collection, source, from, to }) => {
       const embedding = await embedQuery(query);
       const results = await searchPosts({ embedding, limit, collection, source, from, to });
-      return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
+      return { structuredContent: { results }, content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
     });
 
     server.tool("search_x_posts", "X投稿だけを意味検索します。回答の根拠には返された投稿のURLと日時を使ってください。", {
