@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "tsc --noEmit",
     "build:index": "tsx scripts/build-index.ts",
+    "enrich:previews": "tsx scripts/enrich-previews.ts",
     "upload:index": "tsx scripts/upload-index.ts",
     "test": "tsx --test tests/search.test.ts"
   },

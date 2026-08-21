@@ -12,6 +12,9 @@ export type PostRecord = {
   lang?: string;
   text: string;
   metrics?: Record<string, number>;
+  previewTitle?: string;
+  previewDescription?: string;
+  previewImage?: string;
 };
 
 export type IndexMetadata = {
