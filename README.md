@@ -12,14 +12,15 @@ AIニケちゃんに関する公開情報を、MCP（Model Context Protocol）�
 - 投稿本文を含む検索メタデータと生成済みベクトル
 - `.env` 系の環境変数ファイル、API キー、認証トークン
 
-これらは `.gitignore` と `.vercelignore` で除外されています。公開デプロイにもデータを同梱しないため、検索用インデックスは承認済みの非公開ストレージから安全に提供する仕組みを別途用意してから接続してください。現状のまま GitHub 連携でデプロイすると、インデックス未設定として検索が失敗します。これは投稿データを誤って公開しないための安全側の動作です。
+これらは `.gitignore` と `.vercelignore` で除外されています。公開デプロイでは生成済みインデックスをPrivate Vercel Blobから読み込むため、投稿データをリポジトリやFunctionの配布物に含めません。
 
 ## デモ公開とセキュリティ
 
-このプロジェクトは短期の公開デモ向けに、MCP エンドポイントを認証なしで公開します。Vercel には `OPENAI_API_KEY` だけを環境変数として登録し、GitHub、クライアントコード、ログには保存しないでください。
+このプロジェクトは短期の公開デモ向けに、MCP エンドポイントを認証なしで公開します。Vercel には `OPENAI_API_KEY` と、Private Blobを接続して追加されるストレージ用設定を登録します。値をGitHub、クライアントコード、ログに保存しないでください。
 
 ```text
 OPENAI_API_KEY=
+BLOB_READ_WRITE_TOKEN=
 ```
 
 第三者も検索を実行できるため、OpenAI API の利用料が発生します。公開期間を短くし、Vercel 側の WAF とレート制限を設定したうえで、利用状況を確認してください。デモ終了後はデプロイを停止してください。
@@ -31,12 +32,24 @@ OPENAI_API_KEY=
 ```bash
 npm install
 cp .env.example .env.local
-# .env.local に OPENAI_API_KEY と MCP_AUTH_TOKEN を設定
+# .env.local に OPENAI_API_KEY を設定
 npm run build:index
 npm run dev
 ```
 
 ローカルの検索エンドポイントは `http://localhost:3000/api/mcp` です。インデックス生成には、除外された X 投稿データがローカルに必要です。
+
+## Vercel Blob へのインデックス配置
+
+1. VercelプロジェクトのStorageから、**Private**アクセスのBlobストアを作成してプロジェクトへ接続します。
+2. Vercelの環境変数をローカルへ取得し、ローカルの `.env.local` に `BLOB_READ_WRITE_TOKEN` を設定します。
+3. ローカルでインデックスを生成後、次を実行します。
+
+```bash
+npm run upload:index
+```
+
+`indexes/metadata.json` と `indexes/embeddings.f32` がPrivate Blobにアップロードされます。Vercel環境ではこの二つを読み込み、ローカル環境では従来どおり `src/data` のファイルを読み込みます。Blob内のパスを変える場合だけ、`VECTOR_INDEX_METADATA_PATH` と `VECTOR_INDEX_VECTORS_PATH` をローカルとVercelの両方に同じ値で設定してください。
 
 ## MCP ツール
 

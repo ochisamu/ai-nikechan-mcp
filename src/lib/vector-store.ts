@@ -1,3 +1,4 @@
+import { get } from "@vercel/blob";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { IndexMetadata, PostRecord } from "./types";
@@ -14,19 +15,47 @@ function indexFiles() {
   };
 }
 
-async function loadIndex(): Promise<VectorIndex> {
+const blobFiles = {
+  metadata: process.env.VECTOR_INDEX_METADATA_PATH ?? "indexes/metadata.json",
+  vectors: process.env.VECTOR_INDEX_VECTORS_PATH ?? "indexes/embeddings.f32",
+};
+
+async function readPrivateBlob(pathname: string) {
+  const result = await get(pathname, { access: "private" });
+  if (!result || result.statusCode !== 200) {
+    throw new Error(`Private Vercel Blob のインデックスが見つかりません: ${pathname}`);
+  }
+  return Buffer.from(await new Response(result.stream).arrayBuffer());
+}
+
+async function loadIndexFiles() {
+  if (process.env.VERCEL === "1") {
+    const [metadataBytes, vectorBytes] = await Promise.all([
+      readPrivateBlob(blobFiles.metadata),
+      readPrivateBlob(blobFiles.vectors),
+    ]);
+    return { metadataText: metadataBytes.toString("utf8"), vectorBytes };
+  }
+
   const files = indexFiles();
+  const [metadataText, vectorBytes] = await Promise.all([
+    readFile(files.metadata, "utf8"),
+    readFile(files.vectors),
+  ]);
+  return { metadataText, vectorBytes };
+}
+
+async function loadIndex(): Promise<VectorIndex> {
   let metadataText: string;
   let vectorBytes: Buffer;
 
   try {
-    [metadataText, vectorBytes] = await Promise.all([
-      readFile(files.metadata, "utf8"),
-      readFile(files.vectors),
-    ]);
+    ({ metadataText, vectorBytes } = await loadIndexFiles());
   } catch {
     throw new Error(
-      "検索インデックスがありません。OPENAI_API_KEY を設定して npm run build:index を実行してからデプロイしてください。",
+      process.env.VERCEL === "1"
+        ? "Private Vercel Blob の検索インデックスを確認してください。"
+        : "検索インデックスがありません。OPENAI_API_KEY を設定して npm run build:index を実行してください。",
     );
   }
 
