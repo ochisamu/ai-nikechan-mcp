@@ -7,10 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
+    "narrate:x-demo": "node scripts/generate-x-demo-narration.cjs",
+    "record:x-demo": "npm run narrate:x-demo && node scripts/record-x-demo.mjs",
     "build:index": "tsx scripts/build-index.ts",
     "enrich:previews": "tsx scripts/enrich-previews.ts",
     "upload:index": "tsx scripts/upload-index.ts",
-    "test": "tsx --test tests/search.test.ts"
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0",

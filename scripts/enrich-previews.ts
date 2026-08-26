@@ -1,8 +1,37 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { IndexMetadata } from "../src/lib/types";
+
 const metadataPath = path.join(process.cwd(), "src", "data", "metadata.json");
-function decode(value: string) { return value.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'"); }
-function meta(html: string, key: string) { const match = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${key}["'][^>]+content=["']([^"']+)["']`, "i")) ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${key}["']`, "i")); return match?.[1] ? decode(match[1]) : undefined; }
-async function main() { const metadata = JSON.parse(await readFile(metadataPath, "utf8")) as IndexMetadata; const urls = [...new Set(metadata.records.filter((record) => record.source === "website").map((record) => record.url))]; const previews = new Map<string, { title?: string; description?: string; image?: string }>(); await Promise.all(urls.map(async (url) => { const response = await fetch(url, { headers: { Accept: "text/html" } }); if (!response.ok) throw new Error(`公式サイトを取得できませんでした: ${response.status} ${url}`); const html = await response.text(); previews.set(url, { title: meta(html, "og:title"), description: meta(html, "og:description"), image: meta(html, "og:image") }); })); for (const record of metadata.records) { const preview = previews.get(record.url); if (preview) Object.assign(record, { previewTitle: preview.title, previewDescription: preview.description, previewImage: preview.image }); } const temporaryPath = `${metadataPath}.tmp`; await writeFile(temporaryPath, JSON.stringify(metadata)); await rename(temporaryPath, metadataPath); console.log(`Added preview metadata for ${urls.length} official-site pages.`); }
+
+function decode(value: string) {
+  return value.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
+function meta(html: string, key: string) {
+  const match = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${key}["'][^>]+content=["']([^"']+)["']`, "i"))
+    ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${key}["']`, "i"));
+  return match?.[1] ? decode(match[1]) : undefined;
+}
+
+async function main() {
+  const metadata = JSON.parse(await readFile(metadataPath, "utf8")) as IndexMetadata;
+  const urls = [...new Set(metadata.records.filter((record) => record.source === "website").map((record) => record.url))];
+  const previews = new Map<string, { title?: string; description?: string; image?: string }>();
+  await Promise.all(urls.map(async (url) => {
+    const response = await fetch(url, { headers: { Accept: "text/html" } });
+    if (!response.ok) throw new Error(`公式サイトを取得できませんでした: ${response.status} ${url}`);
+    const html = await response.text();
+    previews.set(url, { title: meta(html, "og:title"), description: meta(html, "og:description"), image: meta(html, "og:image") });
+  }));
+  for (const record of metadata.records) {
+    const preview = previews.get(record.url);
+    if (preview) Object.assign(record, { previewTitle: preview.title, previewDescription: preview.description, previewImage: preview.image });
+  }
+  const temporaryPath = `${metadataPath}.tmp`;
+  await writeFile(temporaryPath, JSON.stringify(metadata));
+  await rename(temporaryPath, metadataPath);
+  console.log(`Added preview metadata for ${urls.length} official-site pages.`);
+}
+
 main().catch((error) => { console.error(error); process.exitCode = 1; });

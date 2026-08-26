@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { config } from "dotenv";
 import OpenAI from "openai";
-import { embeddingConfig } from "../src/lib/openai";
+import { embeddingConfig, resolveEmbeddingProvider } from "../src/lib/openai";
 import type { IndexMetadata, PostRecord } from "../src/lib/types";
 
 const root = process.cwd();
@@ -130,14 +130,18 @@ async function fetchWebsiteRecords() {
 }
 
 async function createEmbeddings(records: PostRecord[]) {
-  if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY を設定してください。");
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const provider = resolveEmbeddingProvider();
+  if (!provider) throw new Error("AI_GATEWAY_API_KEY または OPENAI_API_KEY を設定してください。");
+  const client = new OpenAI({
+    apiKey: provider.apiKey,
+    ...(provider.baseURL ? { baseURL: provider.baseURL } : {}),
+  });
   const vectors = new Float32Array(records.length * embeddingConfig.dimensions);
 
   for (let start = 0; start < records.length; start += batchSize) {
     const batch = records.slice(start, start + batchSize);
     const response = await client.embeddings.create({
-      model: embeddingConfig.model,
+      model: provider.model,
       dimensions: embeddingConfig.dimensions,
       input: batch.map((record) => record.text),
     });

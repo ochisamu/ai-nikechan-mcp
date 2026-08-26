@@ -39,6 +39,49 @@ npm run dev
 
 ローカルの検索エンドポイントは `http://localhost:3000/api/mcp` です。インデックス生成には、除外された X 投稿データがローカルに必要です。
 
+## purupuru チャットデモ
+
+トップページは、Codex Desktop、Claude Code、CharaDockから公開MCPへ接続するためのセットアップガイドです。各クライアントの手順はタブで切り替えられ、利用可能な全ツールを固定クエリで実行できます。
+
+`/demo` には、AIニケちゃんの公開情報をこのMCPで検索しながら会話する非公式チャットデモがあります。モデルは `gpt-5.6-luna` で、Vercel AI GatewayまたはOpenAI APIへ接続できます。サンプル質問と自由入力に対応し、回答文字の表示中はAIニケちゃんの口が動きます。CharaDockのPuruPuru実装を参考に、アイドル中の瞬き、呼吸、身体の揺れ、髪の遅延揺れ、キャラクターをクリックした時の短い反応も加えています。
+
+画面はキャラクターを主役にしたゲーム風レイアウトで、会話欄は小さく表示し、必要な時だけ履歴を広げられます。デモから送る質問ではMCPツールの利用を必須にしています。Responses APIが返したツール出力を同梱のMCP Apps UIへ渡し、画像・日時・出典をデモ画面内でも表示します。MCP Appsの結果は自動で開かず、結果ボタンを押した時だけ表示します。PCとスマートフォンの両方に最適化しています。
+
+### アバター素材
+
+デモでは `public/avatar/nikechan` のAIニケちゃんアバターを使用します。アートワークと目・口の派生フレームは、このリポジトリ本体と同じライセンスの対象ではありません。利用条件は [ASSET_NOTICE.md](public/avatar/nikechan/ASSET_NOTICE.md) を確認してください。
+
+- AIニケちゃん / AI Nike-chan
+- [tegnike](https://x.com/tegnike)
+- [AIニケちゃん公式サイト](https://nikechan.com/)
+
+本番環境では、チャットAPIが同じデプロイの `/api/mcp` を自動的に利用します。ローカル開発では、このプロジェクト自身の公開MCP `https://ai-nikechan-mcp.vercel.app/api/mcp` を自動利用します。別のデプロイやHTTPSトンネルを試す場合だけ `MCP_SERVER_URL` で上書きしてください。
+
+```text
+# どちらか一方を設定。両方ある場合はGatewayを優先
+OPENAI_API_KEY=
+AI_GATEWAY_API_KEY=
+# 任意。未設定なら本番は同一デプロイ、ローカルは公開中の自分自身のMCP
+MCP_SERVER_URL=
+# 任意。接続先に合わせてopenai/接頭辞を自動調整
+AI_CHAT_MODEL=gpt-5.6-luna
+```
+
+`AI_GATEWAY_API_KEY` が設定されている場合はGatewayを優先し、未設定なら `OPENAI_API_KEY` でOpenAIへ直接接続します。公開デモでは第三者からAPIを利用できるため、実運用ではVercel WAFやレート制限も設定してください。アプリ内にも簡易的なインメモリ制限を入れていますが、分散環境での強制力を保証するものではありません。
+
+### X投稿用のデモ動画
+
+本番ビルドを起動した状態で次を実行すると、キャラクター、接続先、クライアント切替、ツール試行、クリックで開く実データ、チャット、MCP Appsの順に収録します。隣接するCharaDockの登録済みStyle-Bert-VITS2 JP-Extraモデル `amitaro` でナレーションも生成します。出力はXへそのままアップロードできる1280×720、H.264/AAC、30fpsのMP4です。OGP画像のPNGも同時に保存します。
+
+```bash
+npm run build
+npm start
+# 別ターミナルで
+npm run record:x-demo
+```
+
+既定の出力先は `artifacts/social/ai-nikechan-mcp-x-demo.mp4` と `artifacts/social/ai-nikechan-mcp-ogp.png` です。音声単体と同期情報は `artifacts/social/ai-nikechan-mcp-narration.m4a`、`artifacts/social/ai-nikechan-mcp-narration.json` に残ります。別URLを撮影する場合は `DEMO_BASE_URL`、Chromeの場所が異なる場合は `CHROME_PATH`、CharaDockやユーザーデータの場所が異なる場合は `CHARADOCK_ROOT`、`CHARADOCK_USER_DATA` を指定できます。一度生成した音声を再利用して間だけ調整するときは、`REUSE_TTS=1 npm run narrate:x-demo` を使えます。
+
 ## Vercel Blob へのインデックス配置
 
 1. VercelプロジェクトのStorageから、**Private**アクセスのBlobストアを作成してプロジェクトへ接続します。
@@ -52,6 +95,8 @@ npm run upload:index
 `indexes/metadata.json` と `indexes/embeddings.f32` がPrivate Blobにアップロードされます。Vercel環境ではこの二つを読み込み、ローカル環境では従来どおり `src/data` のファイルを読み込みます。Blob内のパスを変える場合だけ、`VECTOR_INDEX_METADATA_PATH` と `VECTOR_INDEX_VECTORS_PATH` をローカルとVercelの両方に同じ値で設定してください。
 
 ## MCP ツール
+
+AIニケちゃんに関する質問では、モデルが回答前に用途に合う検索ツールを選びやすいよう、質問例と選択条件を各ツールの説明へ含めています。検索・人気順・時系列・X投稿取得系の結果は、画像、日時、出典を確認できるMCP Appsカードとして表示されます。カードではOG説明と投稿本文の重複を除き、サムネイルを切り抜かず全体表示します。
 
 - `search_nikechan_knowledge`: X 投稿と公式サイトを横断した意味検索
 - `search_x_posts`: X 投稿のみの意味検索
