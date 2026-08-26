@@ -15,8 +15,8 @@ export const fixedToolTrials = {
     arguments: { query: "#AIニケちゃん", limit: 4 },
   },
   search_x_posts: {
-    queryLabel: "公式Xでの最近の活動",
-    arguments: { query: "AIニケちゃんの最近の活動", limit: 4, collection: "official" },
+    queryLabel: "Xでの最近の活動",
+    arguments: { query: "AIニケちゃんの最近の活動", limit: 4 },
   },
   get_popular_posts: {
     queryLabel: "反応が大きい投稿 上位4件",
@@ -43,7 +43,7 @@ export const fixedToolTrials = {
 export type TrialToolName = keyof typeof fixedToolTrials;
 
 export type TrialPost = {
-  post: Pick<PostRecord, "url" | "text" | "createdAt" | "collection" | "source" | "previewTitle" | "previewImage">;
+  post: Pick<PostRecord, "url" | "text" | "createdAt" | "collection" | "source" | "previewTitle" | "previewDescription" | "previewImage">;
   scoreLabel?: string;
 };
 
@@ -54,6 +54,12 @@ export type ToolTrialResponse = {
   count: number;
   results: TrialPost[];
   info?: Record<string, unknown>;
+};
+
+export type ToolTrialCache = {
+  generatedAt: string;
+  sourceUrl: string;
+  responses: Record<TrialToolName, ToolTrialResponse>;
 };
 
 function parseJson(value: string) {
@@ -118,6 +124,7 @@ function compactResult(result: McpAppResult): TrialPost {
       collection: post.collection,
       source: post.source,
       ...(post.previewTitle ? { previewTitle: post.previewTitle } : {}),
+      ...(post.previewDescription ? { previewDescription: post.previewDescription } : {}),
       ...(post.previewImage ? { previewImage: post.previewImage } : {}),
     },
     ...(result.scoreLabel ? { scoreLabel: result.scoreLabel } : {}),
@@ -130,7 +137,13 @@ export function normalizeMcpToolResult(wirePayload: unknown) {
   if (rpc.error) throw new Error(rpc.error.message || "MCPツールの実行に失敗しました。");
   if (!rpc.result || typeof rpc.result !== "object") throw new Error("MCPツールの結果がありませんでした。");
 
-  const result = rpc.result as { structuredContent?: { results?: unknown } };
+  const result = rpc.result as { isError?: boolean; content?: unknown; structuredContent?: { results?: unknown } };
+  if (result.isError) {
+    const message = Array.isArray(result.content)
+      ? result.content.flatMap((item) => item && typeof item === "object" && typeof (item as { text?: unknown }).text === "string" ? [(item as { text: string }).text] : []).join("\n")
+      : "";
+    throw new Error(message || "MCPツールの実行に失敗しました。");
+  }
   const payload = result.structuredContent?.results ?? contentJson(result);
   if (Array.isArray(payload)) {
     const results = payload.flatMap((item) => {

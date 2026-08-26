@@ -145,7 +145,7 @@ export default function SetupPage() {
           <header className={styles.sectionHeader}>
             <p className={styles.kicker}>AVAILABLE TOOLS</p>
             <h2>利用できるツール</h2>
-            <p>全{mcpToolCatalog.length}ツールは読み取り専用です。ツールを選ぶと、固定された安全なクエリで実際のMCP呼び出しを試せます。結果は自動で展開されません。</p>
+            <p>全{mcpToolCatalog.length}ツールは読み取り専用です。ツールを選ぶと、固定クエリの実行結果をMCP Appsで確認できます。結果は事前取得済みのため、表示するたびにAPIを再実行しません。</p>
           </header>
           <ToolPlayground />
         </section>

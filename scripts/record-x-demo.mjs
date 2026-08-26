@@ -279,14 +279,14 @@ try {
   });
 
   await playScene("trial", "top-right", async () => {
-    await moveAndClick("[...document.querySelectorAll('button')].find(button=>button.textContent.includes('このツールを試す'))");
+    await moveAndClick("[...document.querySelectorAll('button')].find(button=>button.textContent.includes('固定クエリの結果を見る'))");
     const completed = await waitFor("document.querySelector('[class*=\"trialReceipt\"]')", 20_000);
     if (completed) {
       await evaluate("document.querySelector('[class*=\"trialReceipt\"]')?.scrollIntoView({behavior:'smooth',block:'center'});true");
       await delay(600);
       await moveAndClick("document.querySelector('[class*=\"trialReceipt\"] button')");
-      await waitFor("document.querySelector('[class*=\"trialResults\"]')", 5_000);
-      await evaluate("document.querySelector('[class*=\"trialResults\"]')?.scrollIntoView({behavior:'smooth',block:'center'});true");
+      await waitFor("document.querySelector('[class*=\"trialMcpAppFrame\"]')", 5_000);
+      await evaluate("document.querySelector('[class*=\"trialMcpAppFrame\"]')?.scrollIntoView({behavior:'smooth',block:'center'});true");
       await delay(2100);
     }
     await navigate("/demo");

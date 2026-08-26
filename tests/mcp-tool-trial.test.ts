@@ -53,3 +53,12 @@ test("normalizes raw post output from earlier MCP deployments", () => {
   });
   assert.equal(rawThread.results.length, 1);
 });
+
+test("surfaces MCP tool errors instead of treating them as empty results", () => {
+  assert.throws(() => normalizeMcpToolResult({
+    result: {
+      isError: true,
+      content: [{ type: "text", text: "rate limited" }],
+    },
+  }), /rate limited/);
+});

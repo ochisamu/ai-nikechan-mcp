@@ -1,37 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import toolTrialCacheJson from "@/src/generated/tool-trial-results.json";
 import { mcpToolCatalog } from "@/src/lib/mcp-tool-catalog";
-import { fixedToolTrials, type ToolTrialResponse, type TrialToolName } from "@/src/lib/mcp-tool-trial";
+import { fixedToolTrials, type ToolTrialCache, type ToolTrialResponse, type TrialToolName } from "@/src/lib/mcp-tool-trial";
+import { searchResultsAppHtml } from "@/src/lib/search-results-app";
 import styles from "./setup.module.css";
 
-function ArrowIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>;
-}
+const toolTrialCache = toolTrialCacheJson as unknown as ToolTrialCache;
 
-function ResultCards({ response }: { response: ToolTrialResponse }) {
-  if (response.results.length) {
-    return (
-      <div className={styles.trialResults}>
-        {response.results.map(({ post, scoreLabel }, index) => (
-          <article key={`${post.url}-${index}`} className={styles.trialResultCard}>
-            {post.previewImage && <img src={post.previewImage} alt="" loading="lazy" />}
-            <div>
-              <p className={styles.resultMeta}>
-                <span>{post.collection}</span>
-                <time dateTime={post.createdAt}>{post.createdAt.slice(0, 10)}</time>
-                {scoreLabel && <em>{scoreLabel}</em>}
-              </p>
-              {post.previewTitle && <h4>{post.previewTitle}</h4>}
-              <p className={styles.resultText}>{post.text.replace(/https?:\/\/\S+/g, "").trim()}</p>
-              <a href={post.url} target="_blank" rel="noreferrer">元の投稿・ページを見る <ArrowIcon /></a>
-            </div>
-          </article>
-        ))}
-      </div>
-    );
+function ToolMcpAppFrame({ response }: { response: ToolTrialResponse }) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+
+  function sendToolOutput() {
+    frameRef.current?.contentWindow?.postMessage({
+      params: { structuredContent: { results: response.results } },
+    }, "*");
   }
 
+  return (
+    <iframe
+      ref={frameRef}
+      className={styles.trialMcpAppFrame}
+      srcDoc={searchResultsAppHtml}
+      title={`${response.queryLabel} MCP App`}
+      sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+      onLoad={sendToolOutput}
+    />
+  );
+}
+
+function CachedResult({ response }: { response: ToolTrialResponse }) {
+  if (response.results.length) return <ToolMcpAppFrame response={response} />;
   if (response.info) {
     return (
       <dl className={styles.infoResults}>
@@ -47,9 +47,7 @@ function ResultCards({ response }: { response: ToolTrialResponse }) {
 
 export function ToolPlayground() {
   const [selected, setSelected] = useState<TrialToolName>(mcpToolCatalog[0].name);
-  const [running, setRunning] = useState(false);
   const [response, setResponse] = useState<ToolTrialResponse | null>(null);
-  const [error, setError] = useState("");
   const [resultsOpen, setResultsOpen] = useState(false);
   const tool = mcpToolCatalog.find((item) => item.name === selected) ?? mcpToolCatalog[0];
   const trial = fixedToolTrials[selected];
@@ -57,30 +55,12 @@ export function ToolPlayground() {
   function selectTool(name: TrialToolName) {
     setSelected(name);
     setResponse(null);
-    setError("");
     setResultsOpen(false);
   }
 
-  async function runTool() {
-    if (running) return;
-    setRunning(true);
-    setResponse(null);
+  function showCachedTrial() {
+    setResponse(toolTrialCache.responses[selected]);
     setResultsOpen(false);
-    setError("");
-    try {
-      const result = await fetch("/api/tool-demo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: selected }),
-      });
-      const data = await result.json() as ToolTrialResponse & { error?: string };
-      if (!result.ok) throw new Error(data.error || "ツールを実行できませんでした。");
-      setResponse(data);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "ツールを実行できませんでした。");
-    } finally {
-      setRunning(false);
-    }
   }
 
   return (
@@ -117,17 +97,16 @@ export function ToolPlayground() {
           <code>{JSON.stringify(trial.arguments)}</code>
         </div>
 
-        <button type="button" className={styles.runToolButton} onClick={runTool} disabled={running}>
-          <span aria-hidden="true">{running ? "···" : "▶"}</span>
-          {running ? "MCPを呼び出しています" : "このツールを試す"}
+        <button type="button" className={styles.runToolButton} onClick={showCachedTrial}>
+          <span aria-hidden="true">▶</span>
+          固定クエリの結果を見る
         </button>
 
-        {error && <p className={styles.trialError} role="alert">{error}</p>}
         {response && (
           <div className={styles.trialReceipt}>
             <div>
               <span className={styles.successDot} />
-              <p><strong>実行完了</strong><small>{response.results.length ? `${response.count}件の結果` : `${response.count}項目の情報`}を受け取りました</small></p>
+              <p><strong>実行結果を用意しました</strong><small>{response.results.length ? `${response.count}件のMCP Appsカード` : `${response.count}項目の情報`} · 事前取得済み</small></p>
             </div>
             <button
               type="button"
@@ -139,7 +118,7 @@ export function ToolPlayground() {
             </button>
           </div>
         )}
-        {response && resultsOpen && <ResultCards response={response} />}
+        {response && resultsOpen && <CachedResult response={response} />}
       </section>
     </div>
   );
