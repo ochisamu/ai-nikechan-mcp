@@ -6,7 +6,7 @@ export type ChatProvider = {
 };
 
 const gatewayBaseURL = "https://ai-gateway.vercel.sh/v1";
-const defaultOpenAIModel = "gpt-5.6-luna";
+const defaultOpenAIModel = "gpt-5.4-nano";
 
 function gatewayModel(model: string) {
   return model.includes("/") ? model : `openai/${model}`;

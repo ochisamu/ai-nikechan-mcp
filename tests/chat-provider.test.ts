@@ -6,11 +6,11 @@ test("prefers AI Gateway and adds the OpenAI provider prefix", () => {
   assert.deepEqual(resolveChatProvider({
     AI_GATEWAY_API_KEY: "gateway-key",
     OPENAI_API_KEY: "openai-key",
-    AI_CHAT_MODEL: "gpt-5.6-luna",
+    AI_CHAT_MODEL: "gpt-5.4-nano",
   }), {
     apiKey: "gateway-key",
     baseURL: "https://ai-gateway.vercel.sh/v1",
-    model: "openai/gpt-5.6-luna",
+    model: "openai/gpt-5.4-nano",
     kind: "gateway",
   });
 });
@@ -18,10 +18,10 @@ test("prefers AI Gateway and adds the OpenAI provider prefix", () => {
 test("uses OpenAI directly and removes the gateway provider prefix", () => {
   assert.deepEqual(resolveChatProvider({
     OPENAI_API_KEY: "openai-key",
-    AI_CHAT_MODEL: "openai/gpt-5.6-luna",
+    AI_CHAT_MODEL: "openai/gpt-5.4-nano",
   }), {
     apiKey: "openai-key",
-    model: "gpt-5.6-luna",
+    model: "gpt-5.4-nano",
     kind: "openai",
   });
 });
@@ -34,9 +34,9 @@ test("orders OpenAI after AI Gateway as a runtime fallback", () => {
   assert.deepEqual(resolveChatProviders({
     AI_GATEWAY_API_KEY: "gateway-key",
     OPENAI_API_KEY: "openai-key",
-    AI_CHAT_MODEL: "gpt-5.6-luna",
+    AI_CHAT_MODEL: "gpt-5.4-nano",
   }).map(({ kind, model }) => ({ kind, model })), [
-    { kind: "gateway", model: "openai/gpt-5.6-luna" },
-    { kind: "openai", model: "gpt-5.6-luna" },
+    { kind: "gateway", model: "openai/gpt-5.4-nano" },
+    { kind: "openai", model: "gpt-5.4-nano" },
   ]);
 });
