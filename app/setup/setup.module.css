@@ -148,8 +148,8 @@
   background-repeat: no-repeat;
   background-position: right 1.5rem top 0.25rem;
   background-size: min(43rem, 52vw) auto;
-  filter: saturate(0.72) contrast(0.94);
-  opacity: 0.14;
+  filter: saturate(0.8) contrast(0.97);
+  opacity: 0.23;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 70%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 14%, #000 70%, transparent 100%);
   pointer-events: none;
@@ -553,7 +553,7 @@
 
 @media (max-width: 900px) {
   .hero { min-height: auto; grid-template-columns: 1fr; gap: 2.8rem; }
-  .hero::before { inset: 3rem -7rem 8rem 18%; background-position: right center; background-size: contain; opacity: 0.12; }
+  .hero::before { inset: 3rem -7rem 8rem 18%; background-position: right center; background-size: contain; opacity: 0.2; }
   .endpointCard { width: min(34rem, 100%); margin-bottom: 0; }
   .guide { grid-template-columns: 1fr; }
   .guideContent { padding: 0.8rem; }
@@ -573,7 +573,7 @@
   .siteHeader nav .demoLink { min-height: 2.2rem; padding: 0.55rem 0.68rem; font-size: 0.66rem; }
   .pageContent { width: calc(100% - 1.25rem); }
   .hero { padding: 4.2rem 0 4.8rem; }
-  .hero::before { inset: 2rem -7rem 12rem 3rem; background-size: contain; opacity: 0.1; }
+  .hero::before { inset: 2rem -7rem 12rem 3rem; background-size: contain; opacity: 0.17; }
   .hero h1 { font-size: clamp(2.45rem, 12vw, 3.8rem); }
   .hero h1 { overflow-wrap: anywhere; word-break: break-all; }
   .heroLead { margin-top: 1.3rem; font-size: 0.86rem; line-height: 1.75; }
