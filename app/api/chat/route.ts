@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { z } from "zod";
-import { resolveChatProvider } from "@/src/lib/chat-provider";
+import { resolveChatProviders } from "@/src/lib/chat-provider";
 import { createChatMcpApps } from "@/src/lib/mcp-app-output";
 
 export const runtime = "nodejs";
@@ -83,8 +83,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "少しお話ししすぎたみたい。1分ほど待ってから試してね。" }, { status: 429 });
   }
 
-  const provider = resolveChatProvider();
-  if (!provider) {
+  const providers = resolveChatProviders();
+  if (!providers.length) {
     return Response.json({
       error: "AI_GATEWAY_API_KEY または OPENAI_API_KEY が設定されていません。",
     }, { status: 503 });
@@ -102,44 +102,58 @@ export async function POST(request: Request) {
     }, { status: 503 });
   }
 
-  try {
-    const client = new OpenAI({
-      apiKey: provider.apiKey,
-      ...(provider.baseURL ? { baseURL: provider.baseURL } : {}),
-    });
+  let lastError: unknown;
+  for (const provider of providers) {
+    try {
+      const client = new OpenAI({
+        apiKey: provider.apiKey,
+        ...(provider.baseURL ? { baseURL: provider.baseURL } : {}),
+      });
 
-    const response = await client.responses.create({
-      model: provider.model,
-      instructions,
-      input: parsed.data.messages.map((message) => ({
-        type: "message" as const,
-        role: message.role,
-        content: message.content,
-      })),
-      tools: [{
-        type: "mcp",
-        server_label: "nikechan_knowledge",
-        server_url: serverUrl,
-        require_approval: "never",
-        allowed_tools: allowedTools,
-      }],
-      tool_choice: "required",
-      reasoning: { effort: "low" },
-      max_output_tokens: 1_200,
-      store: false,
-    }, { timeout: 55_000 });
+      const response = await client.responses.create({
+        model: provider.model,
+        instructions,
+        input: parsed.data.messages.map((message) => ({
+          type: "message" as const,
+          role: message.role,
+          content: message.content,
+        })),
+        tools: [{
+          type: "mcp",
+          server_label: "nikechan_knowledge",
+          server_url: serverUrl,
+          require_approval: "never",
+          allowed_tools: allowedTools,
+        }],
+        tool_choice: "required",
+        reasoning: { effort: "low" },
+        max_output_tokens: 1_200,
+        store: false,
+      }, { timeout: 55_000 });
 
-    const mcpCalls = response.output.filter((item) => item.type === "mcp_call");
-    const tools = mcpCalls.map((item) => item.name);
-    const apps = createChatMcpApps(mcpCalls);
-    const reply = response.output_text.trim();
+      const mcpCalls = response.output.filter((item) => item.type === "mcp_call");
+      const tools = mcpCalls.map((item) => item.name);
+      const apps = createChatMcpApps(mcpCalls);
+      const reply = response.output_text.trim();
 
-    if (!reply) throw new Error("The model returned an empty response.");
-    return Response.json({ reply, usedMcp: mcpCalls.length > 0, tools, apps });
-  } catch (error) {
-    console.error("chat response failed", error);
-    return Response.json({
-      error: "いまは記憶にうまくつながらないみたい。少し待ってから、もう一度試してみてね。",
-    }, { status: 502 });
+      if (!reply) throw new Error("The model returned an empty response.");
+      return Response.json({ reply, usedMcp: mcpCalls.length > 0, tools, apps });
+    } catch (error) {
+      lastError = error;
+      console.error(`chat response failed (${provider.kind})`, error);
+    }
   }
+
+  const status = lastError && typeof lastError === "object" && "status" in lastError
+    ? Number((lastError as { status?: unknown }).status)
+    : 0;
+  if (status === 429) {
+    return Response.json({ error: "ただいまアクセスが集中しています。少し待ってから、もう一度試してみてね。" }, { status: 429 });
+  }
+  if (status === 401 || status === 403) {
+    return Response.json({ error: "チャットのAPI設定を確認してください。" }, { status: 503 });
+  }
+  return Response.json({
+    error: "いまは記憶にうまくつながらないみたい。少し待ってから、もう一度試してみてね。",
+  }, { status: 502 });
 }

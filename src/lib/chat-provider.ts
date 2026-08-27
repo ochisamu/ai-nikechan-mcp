@@ -16,28 +16,35 @@ function directOpenAIModel(model: string) {
   return model.startsWith("openai/") ? model.slice("openai/".length) : model;
 }
 
-export function resolveChatProvider(
+export function resolveChatProviders(
   env: Readonly<Record<string, string | undefined>> = process.env,
-): ChatProvider | null {
+): ChatProvider[] {
   const configuredModel = env.AI_CHAT_MODEL?.trim() || defaultOpenAIModel;
+  const providers: ChatProvider[] = [];
   const gatewayKey = env.AI_GATEWAY_API_KEY?.trim();
   if (gatewayKey) {
-    return {
+    providers.push({
       apiKey: gatewayKey,
       baseURL: gatewayBaseURL,
       model: gatewayModel(configuredModel),
       kind: "gateway",
-    };
+    });
   }
 
   const openAIKey = env.OPENAI_API_KEY?.trim();
   if (openAIKey) {
-    return {
+    providers.push({
       apiKey: openAIKey,
       model: directOpenAIModel(configuredModel),
       kind: "openai",
-    };
+    });
   }
 
-  return null;
+  return providers;
+}
+
+export function resolveChatProvider(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): ChatProvider | null {
+  return resolveChatProviders(env)[0] ?? null;
 }
