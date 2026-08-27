@@ -14,12 +14,12 @@ type Message = {
 const welcomeMessage: Message = {
   id: "welcome",
   role: "assistant",
-  content: "こんにちは。公開情報をMCPで探しながらお話しできるよ。下の質問か、好きなことを聞いてね。",
+  content: "こんにちは。公開情報をMCPで探しながらお話しできます。下の質問か、好きなことを聞いてください。",
 };
 
 const sampleQuestions = [
   { label: "どんな存在？", prompt: "AIニケちゃんって、どんな存在なの？公開情報をもとに教えて。" },
-  { label: "最近のテーマ", prompt: "AIニケちゃんが最近よく話しているテーマを教えて。" },
+  { label: "今年の5月何があった？", prompt: "2026年5月を振り返って" },
   { label: "人気の投稿", prompt: "AIニケちゃんに関する投稿で、特に反応が大きかったものを教えて。" },
   { label: "公式サイト", prompt: "AIニケちゃんの公式サイトから分かることを、出典つきで紹介して。" },
 ];
@@ -359,7 +359,7 @@ export default function Home() {
                 <div className="message-stack">
                   <div className="message-bubble typing-bubble">
                     <span /><span /><span />
-                    <em>MCPの記憶をたどっています</em>
+                    <em>考え中...</em>
                   </div>
                 </div>
               </article>

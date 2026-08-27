@@ -44,7 +44,7 @@ export default function SetupPage() {
           <div className={styles.heroCopy}>
             <p className={styles.kicker}><span /> AGENT CONNECTION</p>
             <h1><span className={styles.keepTogether}>AIニケちゃん</span>の記憶を、<br />いつもの<wbr /><span className={styles.keepTogether}>エージェントへ。</span></h1>
-            <p className={styles.heroLead}>このページのチャットは体験用。本命は、普段使っているエージェントから直接MCPを呼び出すことです。接続は約1分、MCP用のAPIキーは不要です。</p>
+            <p className={styles.heroLead}>普段使っているエージェントから直接MCPを呼び出すことができます。接続は約1分、MCP用のAPIキーは不要です。</p>
             <div className={styles.heroActions}>
               <a className={styles.demoAction} href="/demo"><span aria-hidden="true">▶</span> チャットデモを開く <ArrowIcon /></a>
               <a className={styles.primaryAction} href="#clients">エージェントに接続 <ArrowIcon /></a>
