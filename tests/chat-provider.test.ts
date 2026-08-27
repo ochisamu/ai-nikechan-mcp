@@ -40,3 +40,36 @@ test("orders OpenAI after AI Gateway as a runtime fallback", () => {
     { kind: "openai", model: "gpt-5.4-nano" },
   ]);
 });
+
+test("uses an OpenAI model when a non-OpenAI Gateway model needs a fallback", () => {
+  assert.deepEqual(resolveChatProviders({
+    AI_GATEWAY_API_KEY: "gateway-key",
+    OPENAI_API_KEY: "openai-key",
+    AI_CHAT_MODEL: "zai/glm-5.3-flash",
+  }).map(({ kind, model }) => ({ kind, model })), [
+    { kind: "gateway", model: "zai/glm-5.3-flash" },
+    { kind: "openai", model: "gpt-5.4-nano" },
+  ]);
+});
+
+test("allows an explicit OpenAI fallback model for a non-OpenAI Gateway model", () => {
+  assert.deepEqual(resolveChatProviders({
+    AI_GATEWAY_API_KEY: "gateway-key",
+    OPENAI_API_KEY: "openai-key",
+    AI_CHAT_MODEL: "zai/glm-5.3-flash",
+    OPENAI_FALLBACK_CHAT_MODEL: "openai/gpt-5.6-luna",
+  }).map(({ kind, model }) => ({ kind, model })), [
+    { kind: "gateway", model: "zai/glm-5.3-flash" },
+    { kind: "openai", model: "gpt-5.6-luna" },
+  ]);
+});
+
+test("defaults Gateway chat to GLM and direct OpenAI chat to the OpenAI fallback", () => {
+  assert.deepEqual(resolveChatProviders({
+    AI_GATEWAY_API_KEY: "gateway-key",
+    OPENAI_API_KEY: "openai-key",
+  }).map(({ kind, model }) => ({ kind, model })), [
+    { kind: "gateway", model: "zai/glm-5.3-flash" },
+    { kind: "openai", model: "gpt-5.4-nano" },
+  ]);
+});

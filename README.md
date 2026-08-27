@@ -67,7 +67,7 @@ MCP_SERVER_URL=
 AI_CHAT_MODEL=gpt-5.4-nano
 ```
 
-`AI_GATEWAY_API_KEY` が設定されている場合はGatewayを優先します。両方のキーがある場合、Gatewayがレート制限や一時障害で失敗したときだけ `OPENAI_API_KEY` でOpenAIへ直接再試行します。検索用埋め込みも同じ順序です。公開デモでは第三者からAPIを利用できるため、実運用ではVercel WAFやレート制限も設定してください。アプリ内にも簡易的なインメモリ制限を入れていますが、分散環境での強制力を保証するものではありません。
+`AI_GATEWAY_API_KEY` が設定されている場合はGatewayを優先します。チャットの既定モデルは `zai/glm-5.3-flash` です。両方のキーがある場合、Gatewayがレート制限や一時障害で失敗したときだけ `OPENAI_API_KEY` と `OPENAI_FALLBACK_CHAT_MODEL`（既定は `gpt-5.4-nano`）でOpenAIへ直接再試行します。検索用埋め込みもGatewayを優先します。公開デモでは第三者からAPIを利用できるため、実運用ではVercel WAFで `/api/chat` にレート制限を設定してください。アプリ内にも簡易的なインメモリ制限を入れていますが、分散環境での強制力を保証するものではありません。
 
 ### X投稿用のデモ動画
 
