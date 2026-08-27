@@ -2,20 +2,14 @@ import OpenAI from "openai";
 import { z } from "zod";
 import { resolveChatProviders } from "@/src/lib/chat-provider";
 import { createChatMcpApps } from "@/src/lib/mcp-app-output";
+import {
+  executeNikechanChatTool,
+  isNikechanChatToolName,
+  nikechanFunctionTools,
+} from "@/src/lib/nikechan-chat-tools";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const allowedTools = [
-  "search_nikechan_knowledge",
-  "search_hybrid",
-  "search_x_posts",
-  "search_keywords",
-  "search_timeline",
-  "get_popular_posts",
-  "get_x_post",
-  "get_x_thread",
-];
 
 const bodySchema = z.object({
   messages: z.array(z.object({
@@ -27,7 +21,6 @@ const bodySchema = z.object({
 const buckets = new Map<string, { count: number; resetsAt: number }>();
 const rateLimitWindow = 60_000;
 const rateLimitRequests = 12;
-const publicMcpServerUrl = "https://ai-nikechan-mcp.vercel.app/api/mcp";
 
 const instructions = `あなたは、この非公式デモで「AIニケちゃん」として利用者と対話します。ただし本人・公式・運営者を装わず、公開情報を案内するキャラクターデモである立場は守ってください。
 
@@ -42,7 +35,7 @@ const instructions = `あなたは、この非公式デモで「AIニケちゃ�
 【会話の長さ】
 質問へ最初に直接答え、通常は2つの短い文、合計70〜120文字程度に収めてください。利用者が明示的に一覧を求めない限り、見出しや箇条書きは使いません。詳しい根拠はMCP Appsカードに任せ、カード本文や出典URLを回答文へ重複させません。利用者が詳しい説明を明示的に求めた場合だけ必要な長さに広げます。
 
-AIニケちゃんに関する人物像、事実、投稿、作品、活動、関連人物、最近の話題を尋ねられた場合、手元の知識だけで回答してはいけません。回答を作る前に、質問に最も合う nikechan_knowledge MCP ツールを必ず1つ以上呼び出してください。
+AIニケちゃんに関する人物像、事実、投稿、作品、活動、関連人物、最近の話題を尋ねられた場合、手元の知識だけで回答してはいけません。回答を作る前に、質問に最も合う検索ツールを必ず1つ呼び出してください。
 - 広い質問や通常の調査: search_nikechan_knowledge
 - 固有名詞やハッシュタグを含む調査: search_hybrid または search_keywords
 - X投稿に限定した質問: search_x_posts
@@ -70,14 +63,6 @@ function isRateLimited(request: Request) {
   return bucket.count > rateLimitRequests;
 }
 
-function mcpServerUrl(request: Request) {
-  const configured = process.env.MCP_SERVER_URL?.trim();
-  if (configured) return configured;
-  const requestUrl = new URL(request.url);
-  if (requestUrl.protocol !== "https:") return publicMcpServerUrl;
-  return new URL("/api/mcp", requestUrl).toString();
-}
-
 export async function POST(request: Request) {
   if (isRateLimited(request)) {
     return Response.json({ error: "少しお話ししすぎたみたい。1分ほど待ってから試してね。" }, { status: 429 });
@@ -95,49 +80,77 @@ export async function POST(request: Request) {
     return Response.json({ error: "質問の形式を確認してください。" }, { status: 400 });
   }
 
-  const serverUrl = mcpServerUrl(request);
-  if (!serverUrl.startsWith("https://")) {
-    return Response.json({
-      error: "MCP_SERVER_URL には、OpenAIから到達できるHTTPS URLを設定してください。",
-    }, { status: 503 });
-  }
-
   let lastError: unknown;
   for (const provider of providers) {
     try {
       const client = new OpenAI({
         apiKey: provider.apiKey,
         ...(provider.baseURL ? { baseURL: provider.baseURL } : {}),
+        maxRetries: 0,
       });
+
+      const input = parsed.data.messages.map((message) => ({
+        type: "message" as const,
+        role: message.role,
+        content: message.content,
+      }));
+      const toolSelection = await client.responses.create({
+        model: provider.model,
+        instructions,
+        input,
+        tools: nikechanFunctionTools,
+        tool_choice: "required",
+        parallel_tool_calls: false,
+        reasoning: { effort: "low" },
+        max_output_tokens: 500,
+        store: false,
+      }, { timeout: 20_000 });
+
+      const functionCalls = toolSelection.output.filter((item) => item.type === "function_call");
+      if (!functionCalls.length) throw new Error("The model did not select a knowledge tool.");
+
+      const executedCalls = await Promise.all(functionCalls.map(async (call) => {
+        if (!isNikechanChatToolName(call.name)) throw new Error(`Unsupported tool: ${call.name}`);
+        const toolArguments = JSON.parse(call.arguments) as unknown;
+        const results = await executeNikechanChatTool(call.name, toolArguments);
+        return { call, output: JSON.stringify(results) };
+      }));
 
       const response = await client.responses.create({
         model: provider.model,
         instructions,
-        input: parsed.data.messages.map((message) => ({
-          type: "message" as const,
-          role: message.role,
-          content: message.content,
-        })),
-        tools: [{
-          type: "mcp",
-          server_label: "nikechan_knowledge",
-          server_url: serverUrl,
-          require_approval: "never",
-          allowed_tools: allowedTools,
-        }],
-        tool_choice: "required",
+        input: [
+          ...input,
+          ...toolSelection.output,
+          ...executedCalls.map(({ call, output }) => ({
+            type: "function_call_output" as const,
+            call_id: call.call_id,
+            output,
+          })),
+        ],
+        tools: nikechanFunctionTools,
+        tool_choice: "none",
         reasoning: { effort: "low" },
         max_output_tokens: 1_200,
         store: false,
-      }, { timeout: 55_000 });
+      }, { timeout: 25_000 });
 
-      const mcpCalls = response.output.filter((item) => item.type === "mcp_call");
-      const tools = mcpCalls.map((item) => item.name);
-      const apps = createChatMcpApps(mcpCalls);
+      const tools = executedCalls.map(({ call }) => call.name);
+      const apps = createChatMcpApps(executedCalls.map(({ call, output }) => ({
+        id: call.id || call.call_id,
+        name: call.name,
+        output,
+      })));
       const reply = response.output_text.trim();
 
       if (!reply) throw new Error("The model returned an empty response.");
-      return Response.json({ reply, usedMcp: mcpCalls.length > 0, tools, apps });
+      return Response.json({
+        reply,
+        usedMcp: executedCalls.length > 0,
+        tools,
+        apps,
+        model: response.model,
+      });
     } catch (error) {
       lastError = error;
       console.error(`chat response failed (${provider.kind})`, error);
