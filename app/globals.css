@@ -216,13 +216,13 @@ h2 { font-size: clamp(1.05rem, 1.5vw, 1.32rem); line-height: 1.18; letter-spacin
   will-change: transform;
 }
 .puru-motion {
-  --breath-full: 1.018;
-  --breath-half: 1.009;
-  --sway-x: 8px;
-  --sway-y: 6px;
-  --body-roll: 0.65deg;
-  --body-roll-negative: -0.65deg;
-  animation: avatar-idle 6.2s ease-in-out infinite;
+  --breath-full: 1.021;
+  --breath-half: 1.01;
+  --sway-x: 11px;
+  --sway-y: 7px;
+  --body-roll: 0.78deg;
+  --body-roll-negative: -0.78deg;
+  animation: avatar-idle 6.8s ease-in-out infinite;
 }
 .puru-character.is-thinking .puru-motion { animation-duration: 7.4s; }
 .puru-character.is-speaking .puru-speaking-shell {
@@ -628,12 +628,20 @@ h2 { font-size: clamp(1.05rem, 1.5vw, 1.32rem); line-height: 1.18; letter-spacin
   .setup-link-mobile { display: inline; }
   .setup-link svg { width: 0.82rem; }
   .character-stage {
-    inset: 3.85rem 0 7.4rem;
+    inset: 3.85rem 0 14.75rem;
     place-items: center;
   }
   .stage-halo { width: min(25rem, 94vw); }
-  .puru-character { width: min(124vw, 32rem); }
-  .shadow-puddle { bottom: 11%; width: 58%; height: 5%; }
+  .puru-character { width: min(112vw, 29rem); }
+  .puru-motion {
+    --breath-full: 1.014;
+    --breath-half: 1.007;
+    --sway-x: 5px;
+    --sway-y: 4px;
+    --body-roll: 0.42deg;
+    --body-roll-negative: -0.42deg;
+  }
+  .shadow-puddle { bottom: 4%; width: 54%; height: 5%; }
   .chat-panel {
     top: auto;
     right: 0.7rem;
@@ -701,8 +709,8 @@ h2 { font-size: clamp(1.05rem, 1.5vw, 1.32rem); line-height: 1.18; letter-spacin
 }
 
 @media (max-height: 660px) and (max-width: 760px) {
-  .character-stage { inset: 3.5rem 0 6.9rem; }
-  .puru-character { width: min(108vw, 25rem); }
+  .character-stage { inset: 3.5rem 0 13.1rem; }
+  .puru-character { width: min(90vw, 21rem); }
   .chat-panel { bottom: 7.15rem; height: 9.7rem; }
   .chat-panel.is-expanded { height: auto; }
   .chat-header { min-height: 3.25rem; padding-block: 0.72rem 0.35rem; }
@@ -888,18 +896,19 @@ h2 { font-size: clamp(1.05rem, 1.5vw, 1.32rem); line-height: 1.18; letter-spacin
 }
 
 @media (max-width: 760px) {
-  .brand-row { max-width: calc(100vw - 2rem); }
-  .brand-row h1 { min-width: 0; margin-right: 6.6rem; overflow: hidden; font-size: 0.96rem; text-overflow: ellipsis; white-space: nowrap; }
+  .brand-row { right: auto; width: calc(100% - 2rem); max-width: none; padding-right: 6.6rem; }
+  .brand-row h1 { min-width: 0; margin-right: 0; overflow: hidden; font-size: 0.96rem; text-overflow: ellipsis; white-space: nowrap; }
   .brand-row .setup-link { position: absolute; top: 0; right: 0; flex: 0 0 auto; margin-left: 0; }
   .chat-panel {
-    inset: 4.25rem 0 7.3rem;
+    inset: auto 0 7.3rem;
     width: 100%;
-    height: auto;
+    height: clamp(7.5rem, 18dvh, 9.5rem);
+    background: linear-gradient(to top, rgba(12, 11, 19, 0.98) 0%, rgba(12, 11, 19, 0.9) 68%, transparent 100%);
   }
   .chat-panel .messages {
-    padding: 1rem 0.72rem 0.5rem;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 100%);
-    mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 100%);
+    padding: 1.6rem 0.72rem 0.45rem;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, #000 20%, #000 100%);
   }
   .chat-panel .message-row.assistant { padding-right: 15vw; }
   .chat-panel .message-row.user { padding-left: 15vw; }
@@ -920,7 +929,7 @@ h2 { font-size: clamp(1.05rem, 1.5vw, 1.32rem); line-height: 1.18; letter-spacin
 }
 
 @media (max-height: 660px) and (max-width: 760px) {
-  .chat-panel { bottom: 6.9rem; }
+  .chat-panel { bottom: 6.9rem; height: 7rem; }
   .mcp-app-sheet { bottom: 6.9rem; }
 }
 
