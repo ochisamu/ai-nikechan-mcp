@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 import { searchResultsAppHtml } from "@/src/lib/search-results-app";
 import type { ChatMcpApp } from "@/src/lib/mcp-app-output";
 
@@ -85,10 +85,13 @@ export default function Home() {
   const [mouthFrame, setMouthFrame] = useState(0);
   const [status, setStatus] = useState("お話しできます");
   const [activeApp, setActiveApp] = useState<ChatMcpApp | null>(null);
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<AbortController | null>(null);
   const speechTimerRef = useRef<number | null>(null);
   const touchIndexRef = useRef(0);
+  const chatDragStartRef = useRef<number | null>(null);
+  const suppressChatToggleRef = useRef(false);
 
   const busy = isLoading || isSpeaking;
   const avatarSource = `/avatar/nikechan/eyes-${isBlinking ? "closed" : "open"}-mouth-${avatarMouthFrames[mouthFrame]}.png`;
@@ -97,7 +100,7 @@ export default function Home() {
     const container = messagesRef.current;
     if (!container) return;
     container.scrollTop = container.scrollHeight;
-  }, [messages, isLoading]);
+  }, [messages, isLoading, isChatExpanded]);
 
   useEffect(() => {
     for (const eyes of ["open", "closed"]) {
@@ -238,11 +241,40 @@ export default function Home() {
     revealReply(phrase);
   }
 
+  function beginChatDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    chatDragStartRef.current = event.clientY;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function finishChatDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const start = chatDragStartRef.current;
+    chatDragStartRef.current = null;
+    if (start === null) return;
+
+    const distance = event.clientY - start;
+    if (Math.abs(distance) < 28) return;
+
+    suppressChatToggleRef.current = true;
+    setIsChatExpanded(distance < 0);
+  }
+
+  function cancelChatDrag() {
+    chatDragStartRef.current = null;
+  }
+
+  function toggleChatSize() {
+    if (suppressChatToggleRef.current) {
+      suppressChatToggleRef.current = false;
+      return;
+    }
+    setIsChatExpanded((expanded) => !expanded);
+  }
+
   return (
     <main className="demo-page">
       <div className="aurora aurora-one" />
       <div className="aurora aurora-two" />
-      <section className={`demo-shell ${activeApp ? "has-active-app" : ""}`} aria-label="AIニケちゃん MCP チャットデモ">
+      <section className={`demo-shell ${activeApp ? "has-active-app" : ""} ${isChatExpanded ? "chat-is-expanded" : ""}`} aria-label="AIニケちゃん MCP チャットデモ">
         <aside className="character-panel glass-panel" aria-label="AIニケちゃんのアバター">
           <header className="brand-row">
             <div className="brand-mark" aria-hidden="true">N</div>
@@ -277,11 +309,26 @@ export default function Home() {
 
         </aside>
 
-        <section className="chat-panel" aria-labelledby="conversation-title">
+        <section className={`chat-panel ${isChatExpanded ? "is-expanded" : ""}`} aria-labelledby="conversation-title">
           <h2 id="conversation-title" className="sr-only">AIニケちゃんとの会話</h2>
 
-          <div ref={messagesRef} className="messages" aria-live="polite">
-            {messages.slice(-3).map((message) => (
+          <button
+            type="button"
+            className="chat-dock-toggle"
+            aria-controls="conversation-messages"
+            aria-expanded={isChatExpanded}
+            aria-label={isChatExpanded ? "会話を小さくする" : "会話を大きく表示する"}
+            onClick={toggleChatSize}
+            onPointerDown={beginChatDrag}
+            onPointerUp={finishChatDrag}
+            onPointerCancel={cancelChatDrag}
+          >
+            <span aria-hidden="true" />
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 14 5-5 5 5" /></svg>
+          </button>
+
+          <div id="conversation-messages" ref={messagesRef} className="messages" aria-live="polite">
+            {messages.slice(isChatExpanded ? -12 : -2).map((message) => (
               <article key={message.id} className={`message-row ${message.role}`}>
                 <div className="message-stack">
                   <div className="message-bubble">{messageParts(message.content)}</div>
@@ -290,7 +337,10 @@ export default function Home() {
                       key={app.id}
                       type="button"
                       className="mcp-app-launch"
-                      onClick={() => setActiveApp(app)}
+                      onClick={() => {
+                        setActiveApp(app);
+                        setIsChatExpanded(false);
+                      }}
                     >
                       <span className="mcp-app-icon" aria-hidden="true">✦</span>
                       <span>
