@@ -2,7 +2,7 @@
 
 > **非公式ツールです。** このプロジェクトは AIニケちゃん、その運営者、X、OpenAI、または関連する各社・団体から承認、提携、後援を受けたものではありません。名称・投稿・Webサイトなどの情報源に関する権利は、それぞれの権利者に帰属します。
 
-AIニケちゃんに関する公開情報を、MCP（Model Context Protocol）クライアントから検索するための Next.js / Vercel 向けサーバーです。質問は Vercel AI Gateway 経由で OpenAI Embeddings によりベクトル化され、検索結果には情報源 URL と投稿日時を含めます。
+AIニケちゃんに関する公開情報を、MCP（Model Context Protocol）クライアントから検索するための Next.js / Vercel 向けサーバーです。質問は OpenAI Embeddings によりベクトル化され、検索結果には情報源 URL と投稿日時を含めます。`OPENAI_API_KEY` がない場合だけ Vercel AI Gatewayへフォールバックできます。
 
 ## 公開リポジトリに含めないもの
 
@@ -43,7 +43,7 @@ npm run dev
 
 トップページは、Codex Desktop、Claude Code、CharaDockから公開MCPへ接続するためのセットアップガイドです。各クライアントの手順はタブで切り替えられ、利用可能な全ツールを固定クエリで実行できます。
 
-`/demo` には、AIニケちゃんの公開情報をこのMCPで検索しながら会話する非公式チャットデモがあります。モデルは `gpt-5.4-nano` で、Vercel AI GatewayまたはOpenAI APIへ接続できます。サンプル質問と自由入力に対応し、回答文字の表示中はAIニケちゃんの口が動きます。CharaDockのPuruPuru実装を参考に、アイドル中の瞬き、呼吸、身体の揺れ、髪の遅延揺れ、キャラクターをクリックした時の短い反応も加えています。
+`/demo` には、AIニケちゃんの公開情報をこのMCPで検索しながら会話する非公式チャットデモがあります。`OPENAI_API_KEY` がある場合はOpenAIへ直接接続し、既定で `gpt-5.6-luna` を使います。サンプル質問と自由入力に対応し、回答文字の表示中はAIニケちゃんの口が動きます。CharaDockのPuruPuru実装を参考に、アイドル中の瞬き、呼吸、身体の揺れ、髪の遅延揺れ、キャラクターをクリックした時の短い反応も加えています。
 
 画面はキャラクターを主役にしたゲーム風レイアウトで、会話欄は小さく表示し、必要な時だけ履歴を広げられます。デモチャットではResponses APIのtool callingから、このMCPと同じサーバー内検索を実行します。ツール出力を同梱のMCP Apps UIへ渡し、画像・日時・出典をデモ画面内でも表示します。MCP Appsの結果は自動で開かず、結果ボタンを押した時だけ表示します。PCとスマートフォンの両方に最適化しています。
 
@@ -58,16 +58,19 @@ npm run dev
 チャットAPIは、公開MCPと同じ検索実装をサーバー内で直接実行します。`MCP_SERVER_URL` は、セットアップページに載せる固定ツール試行結果を `npm run cache:tool-trials` で再生成するときの接続先だけを上書きします。
 
 ```text
-# どちらか一方を設定。両方ある場合はGatewayを優先
+# 推奨。設定されていればチャットとEmbeddingの両方で最優先
 OPENAI_API_KEY=
+# 任意。OpenAI直結が失敗したときのフォールバック
 AI_GATEWAY_API_KEY=
 # 任意。固定ツール試行結果を再生成するときの接続先MCP
 MCP_SERVER_URL=
-# 任意。接続先に合わせてopenai/接頭辞を自動調整
-AI_CHAT_MODEL=gpt-5.4-nano
+# 任意。OpenAI直結のモデル（既定はgpt-5.6-luna）
+OPENAI_CHAT_MODEL=gpt-5.6-luna
+# 任意。Gatewayフォールバックのモデル
+AI_CHAT_MODEL=zai/glm-5.3-flash
 ```
 
-`AI_GATEWAY_API_KEY` が設定されている場合はGatewayを優先します。チャットの既定モデルは `zai/glm-5.3-flash` です。両方のキーがある場合、Gatewayがレート制限や一時障害で失敗したときだけ `OPENAI_API_KEY` と `OPENAI_FALLBACK_CHAT_MODEL`（既定は `gpt-5.4-nano`）でOpenAIへ直接再試行します。検索用埋め込みもGatewayを優先します。公開デモでは第三者からAPIを利用できるため、実運用ではVercel WAFで `/api/chat` にレート制限を設定してください。アプリ内にも簡易的なインメモリ制限を入れていますが、分散環境での強制力を保証するものではありません。
+`OPENAI_API_KEY` が設定されている場合、チャットは `gpt-5.6-luna`、検索用埋め込みは `text-embedding-3-small` でOpenAIへ直接接続します。両方のキーがある場合もOpenAI直結を先に使い、レート制限や一時障害で失敗したときだけGatewayへ再試行します。公開デモでは第三者からAPIを利用できるため、実運用ではVercel WAFで `/api/chat` にレート制限を設定してください。アプリ内にも簡易的なインメモリ制限を入れていますが、分散環境での強制力を保証するものではありません。
 
 ### X投稿用のデモ動画
 

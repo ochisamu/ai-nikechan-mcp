@@ -16,6 +16,15 @@ export function resolveEmbeddingProviders(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): EmbeddingProvider[] {
   const providers: EmbeddingProvider[] = [];
+  const openAIKey = env.OPENAI_API_KEY?.trim();
+  if (openAIKey) {
+    providers.push({
+      apiKey: openAIKey,
+      model: openAIModel,
+      kind: "openai",
+    });
+  }
+
   const gatewayKey = env.AI_GATEWAY_API_KEY?.trim();
   if (gatewayKey) {
     providers.push({
@@ -23,15 +32,6 @@ export function resolveEmbeddingProviders(
       baseURL: gatewayBaseURL,
       model: gatewayModel,
       kind: "gateway",
-    });
-  }
-
-  const openAIKey = env.OPENAI_API_KEY?.trim();
-  if (openAIKey) {
-    providers.push({
-      apiKey: openAIKey,
-      model: openAIModel,
-      kind: "openai",
     });
   }
 
